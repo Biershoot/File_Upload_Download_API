@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/auth")
@@ -38,5 +40,14 @@ public class AuthController {
     public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest request) {
         JwtResponse response = authService.login(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        // En realidad, solo frontend debe borrar el token
+        return ResponseEntity.ok(Map.of(
+            "message", "Logout exitoso (token debe ser eliminado en el cliente)",
+            "status", "success"
+        ));
     }
 }
