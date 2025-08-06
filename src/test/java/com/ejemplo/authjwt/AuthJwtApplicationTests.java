@@ -1,10 +1,10 @@
-package com.alejandro.microservices.authjwtapi;
+package com.ejemplo.authjwt;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class AuthJwtApiApplicationTests {
+class AuthJwtApplicationTests {
 
     @Test
     void contextLoads() {
