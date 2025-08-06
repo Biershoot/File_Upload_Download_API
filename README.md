@@ -14,8 +14,7 @@
 ## 🎯 Descripción
 API REST moderna desarrollada con Spring Boot 3 que implementa un sistema robusto de autenticación y autorización usando JWT (JSON Web Tokens). Proyecto que demuestra la implementación de seguridad moderna y arquitectura limpia en el desarrollo backend.
 
-## ✨ Demostración
-![API Demo](https://your-image-url.com/demo.gif)
+
 
 ## 🚀 Características Principales
 
