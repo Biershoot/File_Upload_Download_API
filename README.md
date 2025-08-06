@@ -8,7 +8,6 @@
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Alejandro_Arango-blue)](https://www.linkedin.com/in/alejandroarango-dev)
 
 <div align="center">
-  <img src="https://spring.io/images/spring-logo-9146a4d3298760c2e7e49595184e1975.svg" width="200" alt="Spring Logo"/>
   <h3>Sistema de Autenticación Moderno con JWT</h3>
 </div>
 
