@@ -12,7 +12,16 @@
 </div>
 
 ## 🎯 Descripción
-API REST moderna desarrollada con Spring Boot 3 que implementa un sistema robusto de autenticación y autorización usando JWT (JSON Web Tokens). Proyecto que demuestra la implementación de seguridad moderna y arquitectura limpia en el desarrollo backend.
+
+Una **API REST de autenticación y autorización** construida con las mejores prácticas de desarrollo backend moderno. Este proyecto implementa un sistema completo de seguridad empresarial utilizando **JWT (JSON Web Tokens)** y **Spring Boot 3**, demostrando arquitectura escalable, patrones de diseño sólidos y estándares de seguridad de nivel profesional.
+
+### 🌟 ¿Por qué este proyecto?
+
+- **🔒 Seguridad de Nivel Empresarial**: Implementación robusta de JWT con refresh tokens y encriptación BCrypt
+- **⚡ Arquitectura Moderna**: Clean Architecture con separación clara de responsabilidades
+- **🛡️ Protección Avanzada**: Defensa contra ataques CSRF, XSS, SQL Injection y más
+- **📈 Escalabilidad**: Diseñado para manejar alta concurrencia y crecimiento
+- **🔧 Mantenibilidad**: Código limpio, bien documentado y fácil de extender
 
 
 
