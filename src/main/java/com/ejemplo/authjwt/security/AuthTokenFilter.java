@@ -5,71 +5,52 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.util.StringUtils;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.stream.Collectors;
 
+@Component
+@RequiredArgsConstructor
 public class AuthTokenFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtils jwtUtils;
-
-    @Autowired
-    private UserDetailsServiceImpl userDetailsService;
-
-    private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
+    private final JwtUtils jwtUtils;
+    private final UserDetailsServiceImpl userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        
+        // Skip JWT processing for Swagger UI and API docs endpoints
+        String requestURI = request.getRequestURI();
+        if (requestURI.startsWith("/v3/api-docs") || 
+            requestURI.startsWith("/swagger-ui") || 
+            requestURI.startsWith("/swagger-resources") || 
+            requestURI.startsWith("/webjars") ||
+            requestURI.startsWith("/h2-console")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         try {
             String jwt = parseJwt(request);
-
-            // Solo procesamos el token si existe y es válido
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
-                logger.info("Token JWT válido encontrado en la solicitud");
-
-                // Extraer el nombre de usuario del token
-                String username = jwtUtils.getUserNameFromJwtToken(jwt);
-                logger.info("Usuario extraído del token: {}", username);
-
-                // Cargar los detalles del usuario, incluyendo sus roles/autoridades
+                String username = jwtUtils.getUsernameFromJwtToken(jwt);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                // Log de los roles/autoridades asignados al usuario
-                String authorities = userDetails.getAuthorities().stream()
-                        .map(auth -> auth.getAuthority())
-                        .collect(Collectors.joining(", "));
-                logger.info("Roles del usuario {}: {}", username, authorities);
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
 
-                // Crear el token de autenticación con los detalles del usuario y sus autoridades
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                        );
-
-                // Establecer detalles adicionales de la solicitud
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // Establecer la autenticación en el contexto de seguridad
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-                logger.info("Usuario '{}' autenticado correctamente", username);
-            } else if (jwt != null) {
-                logger.warn("Token JWT inválido: {}", jwt);
             }
         } catch (Exception e) {
-            logger.error("No se pudo establecer la autenticación del usuario: {}", e.getMessage());
+            logger.error("Cannot set user authentication: {}", e);
         }
 
         filterChain.doFilter(request, response);
@@ -78,7 +59,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     private String parseJwt(HttpServletRequest request) {
         String headerAuth = request.getHeader("Authorization");
 
-        if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
+        if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
             return headerAuth.substring(7);
         }
 

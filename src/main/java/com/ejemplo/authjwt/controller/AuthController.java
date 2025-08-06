@@ -3,51 +3,40 @@ package com.ejemplo.authjwt.controller;
 import com.ejemplo.authjwt.dto.JwtResponse;
 import com.ejemplo.authjwt.dto.LoginRequest;
 import com.ejemplo.authjwt.dto.RegisterRequest;
-import com.ejemplo.authjwt.dto.SignupRequest;
 import com.ejemplo.authjwt.service.AuthService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
-@CrossOrigin(origins = "*", maxAge = 3600)
+/**
+ * Controlador para manejar la autenticación y registro de usuarios
+ */
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
+@CrossOrigin(origins = "*", maxAge = 3600)
 public class AuthController {
 
-    @Autowired
-    AuthService authService;
+    private final AuthService authService;
 
-    @PostMapping("/signin")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-        return authService.authenticateUser(loginRequest);
-    }
-
-    @PostMapping("/signup")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
-        return authService.registerUser(signUpRequest);
-    }
-
+    /**
+     * Endpoint para registrar un nuevo usuario
+     * @param request Datos de registro del usuario
+     * @return Mensaje de confirmación del registro
+     */
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-        String response = authService.register(request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.ok(authService.register(request));
     }
 
+    /**
+     * Endpoint para iniciar sesión
+     * @param request Credenciales de inicio de sesión
+     * @return Token JWT y datos del usuario
+     */
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest request) {
-        JwtResponse response = authService.login(request);
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/logout")
-    public ResponseEntity<?> logout() {
-        // En realidad, solo frontend debe borrar el token
-        return ResponseEntity.ok(Map.of(
-            "message", "Logout exitoso (token debe ser eliminado en el cliente)",
-            "status", "success"
-        ));
+        return ResponseEntity.ok(authService.login(request));
     }
 }

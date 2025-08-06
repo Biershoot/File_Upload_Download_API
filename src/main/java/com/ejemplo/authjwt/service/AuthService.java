@@ -3,113 +3,89 @@ package com.ejemplo.authjwt.service;
 import com.ejemplo.authjwt.dto.JwtResponse;
 import com.ejemplo.authjwt.dto.LoginRequest;
 import com.ejemplo.authjwt.dto.RegisterRequest;
-import com.ejemplo.authjwt.dto.SignupRequest;
 import com.ejemplo.authjwt.entity.Role;
 import com.ejemplo.authjwt.entity.User;
 import com.ejemplo.authjwt.repository.RoleRepository;
 import com.ejemplo.authjwt.repository.UserRepository;
-import com.ejemplo.authjwt.security.UserPrincipal;
 import com.ejemplo.authjwt.util.JwtUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Servicio que maneja la lógica de autenticación y registro
+ */
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
-    @Autowired
-    AuthenticationManager authenticationManager;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final JwtUtils jwtUtils;
 
-    @Autowired
-    UserRepository userRepository;
+    /**
+     * Registra un nuevo usuario en el sistema
+     * @param request Datos del usuario a registrar
+     * @return Mensaje de confirmación
+     * @throws RuntimeException si el username o email ya existen
+     */
+    @Transactional
+    public String register(RegisterRequest request) {
+        // Validación de usuario existente
+        validateNewUser(request);
 
-    @Autowired
-    RoleRepository roleRepository;
+        // Crear nuevo usuario
+        User user = createUserFromRequest(request);
 
-    @Autowired
-    PasswordEncoder encoder;
+        // Asignar roles
+        assignRoles(user, request.getRoles());
 
-    @Autowired
-    JwtUtils jwtUtils;
-
-    public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(authentication);
-
-        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-        List<String> roles = userPrincipal.getAuthorities().stream()
-                .map(item -> item.getAuthority())
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(new JwtResponse(jwt,
-                userPrincipal.getId(),
-                userPrincipal.getUsername(),
-                userPrincipal.getEmail(),
-                roles));
-    }
-
-    public ResponseEntity<?> registerUser(SignupRequest signUpRequest) {
-        if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-            return ResponseEntity
-                    .badRequest()
-                    .body("Error: Username is already taken!");
-        }
-
-        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            return ResponseEntity
-                    .badRequest()
-                    .body("Error: Email is already in use!");
-        }
-
-        // Create new user's account
-        User user = new User();
-        user.setUsername(signUpRequest.getUsername());
-        user.setEmail(signUpRequest.getEmail());
-        user.setPassword(encoder.encode(signUpRequest.getPassword()));
-
-        Set<String> strRoles = signUpRequest.getRole();
-        Set<Role> roles = new HashSet<>();
-
-        if (strRoles == null) {
-            Role userRole = roleRepository.findByName(Role.RoleName.ROLE_USER)
-                    .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-            roles.add(userRole);
-        } else {
-            strRoles.forEach(role -> {
-                switch (role) {
-                    case "admin":
-                        Role adminRole = roleRepository.findByName(Role.RoleName.ROLE_ADMIN)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(adminRole);
-                        break;
-                    default:
-                        Role userRole = roleRepository.findByName(Role.RoleName.ROLE_USER)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(userRole);
-                }
-            });
-        }
-
-        user.setRoles(roles);
+        // Guardar usuario
         userRepository.save(user);
 
-        return ResponseEntity.ok("User registered successfully!");
+        return "Usuario registrado exitosamente";
     }
 
-    public String register(RegisterRequest request) {
+    /**
+     * Autentica un usuario y genera un token JWT
+     * @param request Credenciales de login
+     * @return Respuesta con token JWT y datos del usuario
+     */
+    public JwtResponse login(LoginRequest request) {
+        Authentication authentication = authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+        );
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String jwt = jwtUtils.generateJwtToken(request.getUsername());
+
+        User user = userRepository.findByUsername(request.getUsername())
+            .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado"));
+
+        List<String> roles = user.getRoles().stream()
+            .map(Role::getName)
+            .collect(Collectors.toList());
+
+        return new JwtResponse(jwt, user.getUsername(), user.getEmail(), roles);
+    }
+
+    /**
+     * Valida que el usuario no exista previamente
+     */
+    private void validateNewUser(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new RuntimeException("El nombre de usuario ya existe");
         }
@@ -117,84 +93,39 @@ public class AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("El email ya está registrado");
         }
+    }
 
-        Set<Role> userRoles = new HashSet<>();
-
-        if (request.getRoles() == null || request.getRoles().isEmpty()) {
-            // Asignar por defecto ROLE_USER
-            Role userRole = roleRepository.findByName(Role.RoleName.ROLE_USER)
-                    .orElseThrow(() -> new RuntimeException("Rol no encontrado"));
-            userRoles.add(userRole);
-        } else {
-            request.getRoles().forEach(roleName -> {
-                switch (roleName) {
-                    case "admin":
-                        Role adminRole = roleRepository.findByName(Role.RoleName.ROLE_ADMIN)
-                                .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + roleName));
-                        userRoles.add(adminRole);
-                        break;
-                    default:
-                        Role userRole = roleRepository.findByName(Role.RoleName.ROLE_USER)
-                                .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + roleName));
-                        userRoles.add(userRole);
-                }
-            });
-        }
-
+    /**
+     * Crea una nueva entidad User a partir de los datos de registro
+     */
+    private User createUserFromRequest(RegisterRequest request) {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        user.setPassword(encoder.encode(request.getPassword()));
-        user.setRoles(userRoles);
-
-        userRepository.save(user);
-
-        return "Usuario registrado exitosamente";
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+        return user;
     }
 
-    public JwtResponse login(LoginRequest request) {
-        // Validar que se proporcionen nombre de usuario y contraseña
-        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
-            throw new RuntimeException("El nombre de usuario es obligatorio");
+    /**
+     * Asigna roles al usuario
+     */
+    private void assignRoles(User user, Set<String> requestRoles) {
+        Set<Role> roles = new HashSet<>();
+
+        if (requestRoles == null || requestRoles.isEmpty()) {
+            Role userRole = roleRepository.findByName("ROLE_USER")
+                .orElseThrow(() -> new RuntimeException("Error: Role ROLE_USER no encontrado"));
+            roles.add(userRole);
+        } else {
+            requestRoles.forEach(roleName -> {
+                Role role = roleRepository.findByName(roleName)
+                    .orElseThrow(() -> new RuntimeException("Error: Role " + roleName + " no encontrado"));
+                roles.add(role);
+            });
         }
 
-        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
-            throw new RuntimeException("La contraseña es obligatoria");
-        }
-
-        // Buscar usuario - imprimir información de depuración
-        System.out.println("🔍 Buscando usuario: " + request.getUsername());
-
-        // Verificar si el usuario existe
-        boolean userExists = userRepository.existsByUsername(request.getUsername());
-        if (!userExists) {
-            System.out.println("❌ Usuario no encontrado: " + request.getUsername());
-            throw new RuntimeException("Usuario no encontrado: " + request.getUsername());
-        }
-
-        // Obtener el usuario
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("Error al recuperar el usuario de la base de datos"));
-
-        // Verificar la contraseña
-        if (!encoder.matches(request.getPassword(), user.getPassword())) {
-            System.out.println("❌ Contraseña incorrecta para usuario: " + request.getUsername());
-            throw new RuntimeException("Contraseña incorrecta");
-        }
-
-        System.out.println("✅ Autenticación exitosa para usuario: " + request.getUsername());
-
-        // Convertir roles a string separados por coma
-        String roles = user.getRoles().stream()
-                .map(role -> role.getName().name())
-                .collect(Collectors.joining(","));
-
-        System.out.println("🔑 Generando token para usuario: " + request.getUsername() + " con roles: " + roles);
-
-        String token = jwtUtils.generateTokenFromUsername(user.getUsername());
-
-        System.out.println("✅ Token generado correctamente");
-
-        return new JwtResponse(token);
+        user.setRoles(roles);
     }
 }

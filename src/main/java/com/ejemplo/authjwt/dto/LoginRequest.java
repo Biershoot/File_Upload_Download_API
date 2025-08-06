@@ -1,14 +1,16 @@
 package com.ejemplo.authjwt.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 public class LoginRequest {
 
-    @NotBlank
+    @NotBlank(message = "El nombre de usuario es obligatorio")
     private String username;
 
-    @NotBlank
+    @NotBlank(message = "La contraseña es obligatoria")
     private String password;
 }

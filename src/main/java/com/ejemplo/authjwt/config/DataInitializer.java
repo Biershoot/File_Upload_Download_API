@@ -4,90 +4,96 @@ import com.ejemplo.authjwt.entity.Role;
 import com.ejemplo.authjwt.entity.User;
 import com.ejemplo.authjwt.repository.RoleRepository;
 import com.ejemplo.authjwt.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.CommandLineRunner;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.CommandLineRunner;
 
 import java.time.LocalDateTime;
 import java.util.Set;
 
 @Component
+@RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
-    @Autowired
-    private RoleRepository roleRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final RoleRepository roleRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
-    public void run(String... args) throws Exception {
-        System.out.println("🚀 Inicializando base de datos...");
+    public void run(String... args) {
+        // Inicializar roles básicos
+        initializeRoles();
+        // Inicializar usuarios por defecto
+        initializeDefaultUsers();
 
-        // Inicializar roles si no existen
-        Role userRole = null;
-        Role adminRole = null;
+        printDatabaseInfo();
+    }
 
-        if (roleRepository.findByName(Role.RoleName.ROLE_USER).isEmpty()) {
-            userRole = new Role();
-            userRole.setName(Role.RoleName.ROLE_USER);
-            userRole = roleRepository.save(userRole);
+    private void initializeRoles() {
+        if (roleRepository.findByName("ROLE_USER").isEmpty()) {
+            roleRepository.save(new Role(null, "ROLE_USER"));
             System.out.println("✅ Rol USER creado");
-        } else {
-            userRole = roleRepository.findByName(Role.RoleName.ROLE_USER).get();
         }
 
-        if (roleRepository.findByName(Role.RoleName.ROLE_ADMIN).isEmpty()) {
-            adminRole = new Role();
-            adminRole.setName(Role.RoleName.ROLE_ADMIN);
-            adminRole = roleRepository.save(adminRole);
+        if (roleRepository.findByName("ROLE_ADMIN").isEmpty()) {
+            roleRepository.save(new Role(null, "ROLE_ADMIN"));
             System.out.println("✅ Rol ADMIN creado");
-        } else {
-            adminRole = roleRepository.findByName(Role.RoleName.ROLE_ADMIN).get();
         }
+    }
 
-        // Crear usuario administrador por defecto si no existe
+    private void initializeDefaultUsers() {
+        // Crear usuario admin si no existe
         if (!userRepository.existsByUsername("admin")) {
-            User adminUser = new User();
-            adminUser.setUsername("admin");
-            adminUser.setEmail("admin@example.com");
-            adminUser.setPassword(passwordEncoder.encode("admin123"));
-            adminUser.setRoles(Set.of(adminRole, userRole));
-            adminUser.setCreatedAt(LocalDateTime.now());
-            adminUser.setUpdatedAt(LocalDateTime.now());
-
-            userRepository.save(adminUser);
-            System.out.println("✅ Usuario administrador creado:");
-            System.out.println("   Username: admin");
-            System.out.println("   Password: admin123");
-            System.out.println("   Email: admin@example.com");
+            createAdminUser();
         }
 
-        // Crear usuario de prueba por defecto
+        // Crear usuario de prueba si no existe
         if (!userRepository.existsByUsername("testuser")) {
-            User testUser = new User();
-            testUser.setUsername("testuser");
-            testUser.setEmail("test@example.com");
-            testUser.setPassword(passwordEncoder.encode("password123"));
-            testUser.setRoles(Set.of(userRole));
-            testUser.setCreatedAt(LocalDateTime.now());
-            testUser.setUpdatedAt(LocalDateTime.now());
-
-            userRepository.save(testUser);
-            System.out.println("✅ Usuario de prueba creado:");
-            System.out.println("   Username: testuser");
-            System.out.println("   Password: password123");
-            System.out.println("   Email: test@example.com");
+            createTestUser();
         }
+    }
 
-        System.out.println("🎯 Base de datos inicializada correctamente!");
-        System.out.println("📊 Consola H2 disponible en: http://localhost:8080/h2-console");
-        System.out.println("   JDBC URL: jdbc:h2:mem:testdb");
-        System.out.println("   Username: root");
-        System.out.println("   Password: root");
+    private void createAdminUser() {
+        User adminUser = new User();
+        adminUser.setUsername("admin");
+        adminUser.setEmail("admin@example.com");
+        adminUser.setPassword(passwordEncoder.encode("admin123"));
+        adminUser.setRoles(Set.of(
+            roleRepository.findByName("ROLE_ADMIN").get(),
+            roleRepository.findByName("ROLE_USER").get()
+        ));
+        adminUser.setCreatedAt(LocalDateTime.now());
+        adminUser.setUpdatedAt(LocalDateTime.now());
+
+        userRepository.save(adminUser);
+        System.out.println("✅ Usuario administrador creado");
+    }
+
+    private void createTestUser() {
+        User testUser = new User();
+        testUser.setUsername("testuser");
+        testUser.setEmail("test@example.com");
+        testUser.setPassword(passwordEncoder.encode("password123"));
+        testUser.setRoles(Set.of(roleRepository.findByName("ROLE_USER").get()));
+        testUser.setCreatedAt(LocalDateTime.now());
+        testUser.setUpdatedAt(LocalDateTime.now());
+
+        userRepository.save(testUser);
+        System.out.println("✅ Usuario de prueba creado");
+    }
+
+    private void printDatabaseInfo() {
+        System.out.println("\n🎯 Base de datos inicializada correctamente!");
+        System.out.println("\n📝 Usuarios por defecto creados:");
+        System.out.println("   1. Admin");
+        System.out.println("      - Username: admin");
+        System.out.println("      - Password: admin123");
+        System.out.println("      - Roles: ROLE_ADMIN, ROLE_USER");
+        System.out.println("\n   2. Usuario de prueba");
+        System.out.println("      - Username: testuser");
+        System.out.println("      - Password: password123");
+        System.out.println("      - Roles: ROLE_USER");
+        System.out.println("\n🔐 Prueba los endpoints en: http://localhost:8086/swagger-ui/index.html");
     }
 }

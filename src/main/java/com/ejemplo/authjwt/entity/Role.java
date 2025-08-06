@@ -11,17 +11,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Role {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private RoleName name;
+    @Column(nullable = false, unique = true)
+    private String name;
 
-    public enum RoleName {
-        ROLE_USER,
-        ROLE_ADMIN
-    }
+    public static final String ROLE_USER = "ROLE_USER";
+    public static final String ROLE_ADMIN = "ROLE_ADMIN";
 }
