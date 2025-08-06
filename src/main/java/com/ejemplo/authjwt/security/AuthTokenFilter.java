@@ -16,6 +16,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.stream.Collectors;
 
 public class AuthTokenFilter extends OncePerRequestFilter {
 
@@ -32,20 +33,43 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         try {
             String jwt = parseJwt(request);
-            if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
-                String username = jwtUtils.getUserNameFromJwtToken(jwt);
 
+            // Solo procesamos el token si existe y es válido
+            if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
+                logger.info("Token JWT válido encontrado en la solicitud");
+
+                // Extraer el nombre de usuario del token
+                String username = jwtUtils.getUserNameFromJwtToken(jwt);
+                logger.info("Usuario extraído del token: {}", username);
+
+                // Cargar los detalles del usuario, incluyendo sus roles/autoridades
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                // Log de los roles/autoridades asignados al usuario
+                String authorities = userDetails.getAuthorities().stream()
+                        .map(auth -> auth.getAuthority())
+                        .collect(Collectors.joining(", "));
+                logger.info("Roles del usuario {}: {}", username, authorities);
+
+                // Crear el token de autenticación con los detalles del usuario y sus autoridades
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails,
-                                null,
-                                userDetails.getAuthorities());
+                        new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                        );
+
+                // Establecer detalles adicionales de la solicitud
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
+                // Establecer la autenticación en el contexto de seguridad
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                logger.info("Usuario '{}' autenticado correctamente", username);
+            } else if (jwt != null) {
+                logger.warn("Token JWT inválido: {}", jwt);
             }
         } catch (Exception e) {
-            logger.error("Cannot set user authentication: {}", e);
+            logger.error("No se pudo establecer la autenticación del usuario: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);
