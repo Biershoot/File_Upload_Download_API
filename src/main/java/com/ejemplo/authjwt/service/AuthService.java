@@ -2,6 +2,7 @@ package com.ejemplo.authjwt.service;
 
 import com.ejemplo.authjwt.dto.JwtResponse;
 import com.ejemplo.authjwt.dto.LoginRequest;
+import com.ejemplo.authjwt.dto.RegisterRequest;
 import com.ejemplo.authjwt.dto.SignupRequest;
 import com.ejemplo.authjwt.entity.Role;
 import com.ejemplo.authjwt.entity.User;
@@ -106,5 +107,48 @@ public class AuthService {
         userRepository.save(user);
 
         return ResponseEntity.ok("User registered successfully!");
+    }
+
+    public String register(RegisterRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new RuntimeException("El nombre de usuario ya existe");
+        }
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("El email ya está registrado");
+        }
+
+        Set<Role> userRoles = new HashSet<>();
+
+        if (request.getRoles() == null || request.getRoles().isEmpty()) {
+            // Asignar por defecto ROLE_USER
+            Role userRole = roleRepository.findByName(Role.RoleName.ROLE_USER)
+                    .orElseThrow(() -> new RuntimeException("Rol no encontrado"));
+            userRoles.add(userRole);
+        } else {
+            request.getRoles().forEach(roleName -> {
+                switch (roleName) {
+                    case "admin":
+                        Role adminRole = roleRepository.findByName(Role.RoleName.ROLE_ADMIN)
+                                .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + roleName));
+                        userRoles.add(adminRole);
+                        break;
+                    default:
+                        Role userRole = roleRepository.findByName(Role.RoleName.ROLE_USER)
+                                .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + roleName));
+                        userRoles.add(userRole);
+                }
+            });
+        }
+
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPassword(encoder.encode(request.getPassword()));
+        user.setRoles(userRoles);
+
+        userRepository.save(user);
+
+        return "Usuario registrado exitosamente";
     }
 }

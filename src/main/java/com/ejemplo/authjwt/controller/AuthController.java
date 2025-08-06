@@ -1,6 +1,7 @@
 package com.ejemplo.authjwt.controller;
 
 import com.ejemplo.authjwt.dto.LoginRequest;
+import com.ejemplo.authjwt.dto.RegisterRequest;
 import com.ejemplo.authjwt.dto.SignupRequest;
 import com.ejemplo.authjwt.service.AuthService;
 import jakarta.validation.Valid;
@@ -24,5 +25,11 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
         return authService.registerUser(signUpRequest);
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+        String response = authService.register(request);
+        return ResponseEntity.ok(response);
     }
 }
