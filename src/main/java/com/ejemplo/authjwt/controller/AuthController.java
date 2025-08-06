@@ -1,5 +1,6 @@
 package com.ejemplo.authjwt.controller;
 
+import com.ejemplo.authjwt.dto.JwtResponse;
 import com.ejemplo.authjwt.dto.LoginRequest;
 import com.ejemplo.authjwt.dto.RegisterRequest;
 import com.ejemplo.authjwt.dto.SignupRequest;
@@ -30,6 +31,12 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         String response = authService.register(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest request) {
+        JwtResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
 }

@@ -151,4 +151,50 @@ public class AuthService {
 
         return "Usuario registrado exitosamente";
     }
+
+    public JwtResponse login(LoginRequest request) {
+        // Validar que se proporcionen nombre de usuario y contraseña
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+            throw new RuntimeException("El nombre de usuario es obligatorio");
+        }
+
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            throw new RuntimeException("La contraseña es obligatoria");
+        }
+
+        // Buscar usuario - imprimir información de depuración
+        System.out.println("🔍 Buscando usuario: " + request.getUsername());
+
+        // Verificar si el usuario existe
+        boolean userExists = userRepository.existsByUsername(request.getUsername());
+        if (!userExists) {
+            System.out.println("❌ Usuario no encontrado: " + request.getUsername());
+            throw new RuntimeException("Usuario no encontrado: " + request.getUsername());
+        }
+
+        // Obtener el usuario
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("Error al recuperar el usuario de la base de datos"));
+
+        // Verificar la contraseña
+        if (!encoder.matches(request.getPassword(), user.getPassword())) {
+            System.out.println("❌ Contraseña incorrecta para usuario: " + request.getUsername());
+            throw new RuntimeException("Contraseña incorrecta");
+        }
+
+        System.out.println("✅ Autenticación exitosa para usuario: " + request.getUsername());
+
+        // Convertir roles a string separados por coma
+        String roles = user.getRoles().stream()
+                .map(role -> role.getName().name())
+                .collect(Collectors.joining(","));
+
+        System.out.println("🔑 Generando token para usuario: " + request.getUsername() + " con roles: " + roles);
+
+        String token = jwtUtils.generateTokenFromUsername(user.getUsername());
+
+        System.out.println("✅ Token generado correctamente");
+
+        return new JwtResponse(token);
+    }
 }

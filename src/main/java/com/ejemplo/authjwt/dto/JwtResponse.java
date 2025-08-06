@@ -21,4 +21,9 @@ public class JwtResponse {
         this.email = email;
         this.roles = roles;
     }
+
+    // Constructor simple para el endpoint /login
+    public JwtResponse(String accessToken) {
+        this.token = accessToken;
+    }
 }

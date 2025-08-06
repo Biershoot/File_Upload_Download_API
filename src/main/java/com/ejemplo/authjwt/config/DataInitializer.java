@@ -67,6 +67,23 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("   Email: admin@example.com");
         }
 
+        // Crear usuario de prueba por defecto
+        if (!userRepository.existsByUsername("testuser")) {
+            User testUser = new User();
+            testUser.setUsername("testuser");
+            testUser.setEmail("test@example.com");
+            testUser.setPassword(passwordEncoder.encode("password123"));
+            testUser.setRoles(Set.of(userRole));
+            testUser.setCreatedAt(LocalDateTime.now());
+            testUser.setUpdatedAt(LocalDateTime.now());
+
+            userRepository.save(testUser);
+            System.out.println("✅ Usuario de prueba creado:");
+            System.out.println("   Username: testuser");
+            System.out.println("   Password: password123");
+            System.out.println("   Email: test@example.com");
+        }
+
         System.out.println("🎯 Base de datos inicializada correctamente!");
         System.out.println("📊 Consola H2 disponible en: http://localhost:8080/h2-console");
         System.out.println("   JDBC URL: jdbc:h2:mem:testdb");
